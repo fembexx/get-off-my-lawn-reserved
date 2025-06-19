@@ -1,12 +1,13 @@
 package draylar.goml.compat;
 
+import draylar.goml.GetOffMyLawn;
 import draylar.goml.api.Claim;
 import draylar.goml.api.group.PlayerGroup;
 import draylar.goml.api.group.PlayerGroupProvider;
-import earth.terrarium.argonauts.api.guild.Guild;
-import earth.terrarium.argonauts.api.guild.GuildApi;
-import earth.terrarium.argonauts.common.handlers.guild.members.GuildMember;
-import earth.terrarium.argonauts.fabric.events.GuildEvents;
+//import earth.terrarium.argonauts.api.guild.Guild;
+//import earth.terrarium.argonauts.api.guild.GuildApi;
+//import earth.terrarium.argonauts.common.handlers.guild.members.GuildMember;
+//import earth.terrarium.argonauts.fabric.events.GuildEvents;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.DyedColorComponent;
 import net.minecraft.component.type.TooltipDisplayComponent;
@@ -25,7 +26,8 @@ import java.util.*;
 
 public class ArgonautsCompat {
     public static void init() {
-        PlayerGroupProvider.register("argonauts_guild", GuildProvider.INSTANCE);
+        GetOffMyLawn.LOGGER.warn("Tried to enable compat with argonauts, but it's not implemented!");
+        /*PlayerGroupProvider.register("argonauts_guild", GuildProvider.INSTANCE);
         GuildEvents.REMOVED.register(((b, guild) -> {
             var cached = GuildGroup.CACHE.get(guild);
             if (cached != null) {
@@ -34,9 +36,9 @@ public class ArgonautsCompat {
                 }
             }
             GuildGroup.CACHE.remove(guild);
-        }));
+        }));*/
     }
-
+    /*
     private record GuildProvider() implements PlayerGroupProvider {
         public static final PlayerGroupProvider INSTANCE = new GuildProvider();
         @Override
@@ -147,5 +149,5 @@ public class ArgonautsCompat {
         public int hashCode() {
             return this.guild.id().hashCode() + 31 * "argonauts".hashCode();
         }
-    }
+    }*/
 }

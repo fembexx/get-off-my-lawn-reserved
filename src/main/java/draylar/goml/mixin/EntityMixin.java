@@ -6,6 +6,8 @@ import draylar.goml.other.OriginOwner;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.storage.ReadView;
+import net.minecraft.storage.WriteView;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import org.spongepowered.asm.mixin.Mixin;
@@ -36,18 +38,16 @@ public abstract class EntityMixin implements OriginOwner {
         }
     }
 
-    @Inject(method = "writeNbt", at = @At("TAIL"))
-    private void writeGomlNbt(NbtCompound nbt, CallbackInfoReturnable<NbtCompound> cir) {
+    @Inject(method = "writeData", at = @At("TAIL"))
+    private void writeGomlNbt(WriteView view, CallbackInfo ci) {
         if (this.originPos != null) {
-            nbt.put("goml:origin", LegacyNbtHelper.fromBlockPos(this.originPos));
+            view.put("goml:origin", NbtCompound.CODEC, LegacyNbtHelper.fromBlockPos(this.originPos));
         }
     }
 
-    @Inject(method = "readNbt", at = @At("TAIL"))
-    private void readGomlNbt(NbtCompound nbt, CallbackInfo ci) {
-        if (nbt.contains("goml:origin")) {
-            this.originPos = LegacyNbtHelper.toBlockPos(nbt.getCompoundOrEmpty("goml:origin"));
-        }
+    @Inject(method = "readData", at = @At("TAIL"))
+    private void readGomlNbt(ReadView view, CallbackInfo ci) {
+        this.originPos = view.read("goml:origin", NbtCompound.CODEC).map(LegacyNbtHelper::toBlockPos).orElse(null);
     }
 
     @Override

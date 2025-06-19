@@ -1,5 +1,6 @@
 package draylar.goml.block.entity;
 
+import com.mojang.serialization.Codec;
 import draylar.goml.GetOffMyLawn;
 import draylar.goml.api.Augment;
 import draylar.goml.api.Claim;
@@ -16,6 +17,8 @@ import net.minecraft.nbt.NbtList;
 import net.minecraft.nbt.NbtLong;
 import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.storage.ReadView;
+import net.minecraft.storage.WriteView;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
@@ -84,30 +87,28 @@ public class ClaimAnchorBlockEntity extends BlockEntity implements PolymerObject
     }
 
     @Override
-    protected void writeNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup) {
-        super.writeNbt(nbt, registryLookup);
-        NbtList positions = new NbtList();
+    protected void writeData(WriteView view) {
+        super.writeData(view);
+        var positions = view.getListAppender(AUGMENT_LIST_KEY, Codec.LONG);
         for (BlockPos loadPosition : this.loadPositions) {
-            positions.add(NbtLong.of(loadPosition.asLong()));
+            positions.add(loadPosition.asLong());
         }
         if (this.claim != null) {
             for (Map.Entry<BlockPos, Augment> entry : this.claim.getAugments().entrySet()) {
-                positions.add(NbtLong.of(entry.getKey().asLong()));
+                positions.add(entry.getKey().asLong());
             }
         }
-
-        nbt.put(AUGMENT_LIST_KEY, positions);
     }
 
     @Override
-    public void readNbt(NbtCompound tag, RegistryWrapper.WrapperLookup registryLookup) {
-        NbtList positions = tag.getListOrEmpty(AUGMENT_LIST_KEY);
+    public void readData(ReadView view) {
+        var positions = view.getTypedListView(AUGMENT_LIST_KEY, Codec.LONG);
         positions.forEach(sub -> {
-            BlockPos foundPos = BlockPos.fromLong(((NbtLong) sub).longValue());
+            BlockPos foundPos = BlockPos.fromLong(sub);
             this.loadPositions.add(foundPos);
         });
 
-        super.readNbt(tag, registryLookup);
+        super.readData(view);
     }
 
     @Override

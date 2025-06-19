@@ -1,5 +1,6 @@
 package draylar.goml.api;
 
+import com.mojang.serialization.Codec;
 import draylar.goml.GetOffMyLawn;
 import draylar.goml.api.event.ClaimEvents;
 import draylar.goml.api.group.PlayerGroup;
@@ -26,9 +27,13 @@ import net.minecraft.screen.ScreenHandlerType;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.storage.ReadView;
+import net.minecraft.storage.WriteView;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.Uuids;
+import net.minecraft.util.dynamic.Codecs;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.registry.RegistryKey;
@@ -51,6 +56,8 @@ public class Claim {
     public static final String AUGMENTS_KEY = "Augments";
     public static final String CUSTOM_DATA_KEY = "CustomData";
     private static final String BOX_KEY = "Box";
+
+    private static final Codec<Map<Identifier, NbtElement>> CUSTOM_DATA_CODEC = Codec.unboundedMap(Identifier.CODEC, Codecs.NBT_ELEMENT);
 
     private final Set<UUID> owners = new HashSet<>();
     private final Set<UUID> trusted = new HashSet<>();
@@ -180,133 +187,108 @@ public class Claim {
      *
      * @return  this object serialized to a {@link NbtCompound}
      */
-    public NbtCompound asNbt() {
-        NbtCompound nbt = new NbtCompound();
-
+    public void writeData(WriteView view) {
         // collect owner UUIDs into list
-        NbtList ownersTag = new NbtList();
+        var ownersTag = view.getListAppender(OWNERS_KEY, Uuids.INT_STREAM_CODEC);
         for (UUID ownerUUID : owners) {
-            ownersTag.add(LegacyNbtHelper.fromUuid(ownerUUID));
+            ownersTag.add(ownerUUID);
         }
 
         // collect trusted UUIDs into list
-        NbtList trustedTag = new NbtList();
+        var trustedTag = view.getListAppender(TRUSTED_KEY, Uuids.INT_STREAM_CODEC);
         for (UUID trustedUUID : trusted) {
-            trustedTag.add(LegacyNbtHelper.fromUuid(trustedUUID));
+            trustedTag.add(trustedUUID);
         }
 
         // collect trusted UUIDs into list
-        NbtList trustedGroupsTag = new NbtList();
+        var trustedGroupsTag = view.getListAppender(TRUSTED_KEY, Codec.STRING);
         if (this.trustedGroups != null) {
             for (var group : this.trustedGroups) {
                 if (group.canSave()) {
                     var id = group.getKey();
                     if (id != null) {
-                        trustedGroupsTag.add(NbtString.of(id.compact()));
+                        trustedGroupsTag.add(id.compact());
                     }
                 }
             }
         }
-        for (var group: this.trustedGroupKeys) {
-            trustedGroupsTag.add(NbtString.of(group.compact()));
+        for (var group : this.trustedGroupKeys) {
+            trustedGroupsTag.add(group.compact());
         }
-        nbt.put(OWNERS_KEY, ownersTag);
-        nbt.put(TRUSTED_KEY, trustedTag);
-        nbt.put(TRUSTED_GROUP_KEY, trustedGroupsTag);
-        nbt.putLong(POSITION_KEY, origin.asLong());
+        view.putLong(POSITION_KEY, origin.asLong());
         if (this.icon != null) {
-            nbt.put(ICON_KEY, ItemStack.CODEC.encodeStart(NbtOps.INSTANCE, this.icon).result().get());
+            view.put(ICON_KEY, ItemStack.OPTIONAL_CODEC, this.icon);
         }
-        nbt.putString(TYPE_KEY, Registries.BLOCK.getId(this.type).toString());
+        view.putString(TYPE_KEY, Registries.BLOCK.getId(this.type).toString());
 
-        var customData = new NbtCompound();
+        var customData = new HashMap<Identifier, NbtElement>();
 
         for (var entry : this.customData.entrySet()) {
             var value = entry.getKey().serializer().apply(entry.getValue());
 
             if (value != null) {
-                customData.put(entry.getKey().key().toString(), value);
+                customData.put(entry.getKey().key(), value);
             }
         }
 
-        nbt.put(CUSTOM_DATA_KEY, customData);
+        view.put(CUSTOM_DATA_KEY, CUSTOM_DATA_CODEC, customData);
 
 
-        var augments = new NbtList();
+        var augments = view.getList(AUGMENTS_KEY);
 
         for (var entry : this.augments.entrySet()) {
-            var value = new NbtCompound();
-            value.put("Pos", LegacyNbtHelper.fromBlockPos(entry.getKey()));
+            var value = augments.add();
+            value.put("Pos", NbtCompound.CODEC, LegacyNbtHelper.fromBlockPos(entry.getKey()));
             value.putString("Type", GOMLAugments.getId(entry.getValue()).toString());
-
-            augments.add(value);
         }
 
-        nbt.put(AUGMENTS_KEY, augments);
-
-        nbt.put(BOX_KEY, this.claimBox.toNbt());
-
-
-        return nbt;
+        this.claimBox.writeData(view.get(BOX_KEY));
     }
 
     @ApiStatus.Internal
-    public static Claim fromNbt(MinecraftServer server, NbtCompound nbt, int version) {
+    public static Claim readData(MinecraftServer server, ReadView view, int version) {
         // Collect UUID of owners
         Set<UUID> ownerUUIDs = new HashSet<>();
-        for (NbtElement ownerUUID : nbt.getListOrEmpty(OWNERS_KEY)) {
-            ownerUUIDs.add(LegacyNbtHelper.toUuid(ownerUUID));
+        for (var ownerUUID : view.getTypedListView(OWNERS_KEY, Uuids.INT_STREAM_CODEC)) {
+            ownerUUIDs.add(ownerUUID);
         }
 
         // Collect UUID of trusted
         Set<UUID> trustedUUIDs = new HashSet<>();
-        for (NbtElement trustedUUID : nbt.getListOrEmpty(TRUSTED_KEY)) {
-            trustedUUIDs.add(LegacyNbtHelper.toUuid(trustedUUID));
+        for (var trustedUUID : view.getTypedListView(TRUSTED_KEY, Uuids.INT_STREAM_CODEC)) {
+            trustedUUIDs.add(trustedUUID);
         }
 
-        var claim = new Claim(server, ownerUUIDs, trustedUUIDs, BlockPos.fromLong(nbt.getLong(POSITION_KEY, 0)));
+        var claim = new Claim(server, ownerUUIDs, trustedUUIDs, BlockPos.fromLong(view.getLong(POSITION_KEY, 0)));
 
-        for (var nbtId : nbt.getListOrEmpty(OWNERS_KEY)) {
-            var id = PlayerGroup.Key.of(nbtId.asString().orElse(""));
-            if (id != null) {
-                var group = PlayerGroupProvider.getGroup(server, id);
-                if (group != null) {
-                    claim.trust(group);
-                }
-            }
-        }
-
-        if (nbt.contains(ICON_KEY)) {
-            claim.icon = ItemStack.fromNbt(server.getRegistryManager(), nbt.getCompoundOrEmpty(ICON_KEY)).orElse(ItemStack.EMPTY);
-        }
-
-        if (nbt.contains(TYPE_KEY)) {
-            var block = Registries.BLOCK.get(Identifier.tryParse(nbt.getString(TYPE_KEY, "")));
+        claim.icon = view.read(ICON_KEY, ItemStack.OPTIONAL_CODEC).orElse(ItemStack.EMPTY);
+        if (!view.getString(TYPE_KEY, "").isEmpty()) {
+            var block = Registries.BLOCK.get(Identifier.tryParse(view.getString(TYPE_KEY, "")));
             if (block instanceof ClaimAnchorBlock anchorBlock) {
                 claim.type = anchorBlock;
             }
         }
 
-        var customData = nbt.getCompoundOrEmpty(CUSTOM_DATA_KEY);
+        var customData = view.read(CUSTOM_DATA_KEY, CUSTOM_DATA_CODEC);
 
-        for (var stringKey : customData.getKeys()) {
-            var key = Identifier.tryParse(stringKey);
-            var dataKey = DataKey.getKey(key);
+        if (customData.isPresent()) {
+            for (var key : customData.get().keySet()) {
+                var dataKey = DataKey.getKey(key);
 
-            if (dataKey != null) {
-                claim.customData.put((DataKey<Object>) dataKey, dataKey.deserializer().apply(customData.get(stringKey)));
+                if (dataKey != null) {
+                    claim.customData.put((DataKey<Object>) dataKey, dataKey.deserializer().apply(customData.get().get(key)));
+                }
             }
         }
 
         if (version == 0) {
             claim.claimBox = ClaimBox.EMPTY;
         } else {
-            claim.claimBox = ClaimBox.readNbt(nbt.getCompoundOrEmpty(BOX_KEY), 0);
+            claim.claimBox = ClaimBox.readData(view.getReadView(BOX_KEY), 0);
         }
 
-        for (var entry : nbt.getListOrEmpty(AUGMENTS_KEY)) {
-            var value = (NbtCompound) entry;
-            var pos = LegacyNbtHelper.toBlockPos(value.getCompoundOrEmpty("Pos"));
+        for (var value : view.getListReadView(AUGMENTS_KEY)) {
+            var pos = LegacyNbtHelper.toBlockPos(value.read("Pos", NbtCompound.CODEC).orElseGet(NbtCompound::new));
             var type = GOMLAugments.get(Identifier.tryParse(value.getString("Type", "")));
 
             if (pos != null && type != null) {
@@ -314,8 +296,8 @@ public class Claim {
             }
         }
 
-        for (var string : nbt.getListOrEmpty(TRUSTED_GROUP_KEY)) {
-            claim.trustedGroupKeys.add(PlayerGroup.Key.of(string.asString().orElse("")));
+        for (var string : view.getTypedListView(TRUSTED_GROUP_KEY, Codec.STRING)) {
+            claim.trustedGroupKeys.add(PlayerGroup.Key.of(string));
         }
 
         for (var augment : claim.augments.entrySet()) {
@@ -384,7 +366,7 @@ public class Claim {
 
         gui.addSlot(GuiElementBuilder.from(this.icon)
                 .setName(Text.translatable("text.goml.gui.claim.about"))
-                .setLore(ClaimUtils.getClaimText(player.server, this))
+                .setLore(ClaimUtils.getClaimText(player.getServer(), this))
         );
 
         gui.addSlot(new GuiElementBuilder(Items.PLAYER_HEAD)

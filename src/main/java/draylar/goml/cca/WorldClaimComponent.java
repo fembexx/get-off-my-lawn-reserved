@@ -4,11 +4,9 @@ import com.jamieswhiteshirt.rtree3i.ConfigurationBuilder;
 import com.jamieswhiteshirt.rtree3i.RTreeMap;
 import draylar.goml.api.Claim;
 import draylar.goml.api.ClaimBox;
-import net.fabricmc.fabric.api.util.NbtType;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtList;
-import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.storage.ReadView;
+import net.minecraft.storage.WriteView;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
@@ -37,19 +35,18 @@ public class WorldClaimComponent implements ClaimComponent {
     }
 
     @Override
-    public void readFromNbt(NbtCompound tag, RegistryWrapper.WrapperLookup lookup) {
+    public void readData(ReadView view) {
         this.claims = RTreeMap.create(new ConfigurationBuilder().star().build(), ClaimBox::rtree3iBox);
         var world = this.world.getRegistryKey().getValue();
 
-        var version = tag.getInt("Version", 0);
-        NbtList nbtList = tag.getListOrEmpty("Claims");
+        var version = view.getInt("Version", 0);
+        var nbtList = view.getListReadView("Claims");
 
         if (version == 0) {
             nbtList.forEach(child -> {
-                NbtCompound childCompound = (NbtCompound) child;
-                ClaimBox box = boxFromTag((NbtCompound) childCompound.get("Box"));
+                ClaimBox box = boxFromTag(child.getReadView("Box"));
                 if (box != null) {
-                    Claim claimInfo = Claim.fromNbt(this.world.getServer(), (NbtCompound) childCompound.get("Info"), version);
+                    Claim claimInfo = Claim.readData(this.world.getServer(), child.getReadView("Info"), version);
                     claimInfo.internal_setWorld(world);
                     claimInfo.internal_setClaimBox(box);
                     if (this.world instanceof ServerWorld world1) {
@@ -61,7 +58,7 @@ public class WorldClaimComponent implements ClaimComponent {
             });
         } else {
             nbtList.forEach(child -> {
-                Claim claimInfo = Claim.fromNbt(this.world.getServer(), (NbtCompound) child, version);
+                Claim claimInfo = Claim.readData(this.world.getServer(), child, version);
                 claimInfo.internal_setWorld(world);
                 if (this.world instanceof ServerWorld world1) {
                     claimInfo.internal_updateChunkCount(world1);
@@ -73,18 +70,15 @@ public class WorldClaimComponent implements ClaimComponent {
     }
 
     @Override
-    public void writeToNbt(NbtCompound tag, RegistryWrapper.WrapperLookup lookup) {
-        NbtList nbtListClaims = new NbtList();
-        tag.putInt("Version", 1);
-
-        claims.values().forEach(claim -> nbtListClaims.add(claim.asNbt()));
-
-        tag.put("Claims", nbtListClaims);
+    public void writeData(WriteView view) {
+        var nbtListClaims = view.getList("Claims");
+        view.putInt("Version", 1);
+        claims.values().forEach(claim -> claim.writeData(nbtListClaims.add()));
     }
 
     @Nullable
     @Deprecated
-    public ClaimBox boxFromTag(NbtCompound tag) {
-        return ClaimBox.readNbt(tag, 0);
+    public ClaimBox boxFromTag(ReadView tag) {
+        return ClaimBox.readData(tag, 0);
     }
 }

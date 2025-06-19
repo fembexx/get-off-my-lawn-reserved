@@ -46,7 +46,7 @@ public abstract class GenericPlayerListGui extends PagedGui {
     }
 
     protected DisplayElement getPlayerElement(UUID uuid) {
-        var optional = this.player.server.getUserCache().getByUuid(uuid);
+        var optional = this.player.getServer().getUserCache().getByUuid(uuid);
         var exist = optional.isPresent();
         var gameProfile = exist ? optional.get() : null;
 

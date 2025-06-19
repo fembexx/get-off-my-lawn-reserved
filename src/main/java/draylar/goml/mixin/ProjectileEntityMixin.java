@@ -7,6 +7,7 @@ import draylar.goml.other.OriginOwner;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.FallingBlockEntity;
+import net.minecraft.entity.LazyEntityReference;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.projectile.ProjectileEntity;
 import net.minecraft.server.world.ServerWorld;
@@ -25,7 +26,7 @@ import java.util.UUID;
 
 @Mixin(ProjectileEntity.class)
 public abstract class ProjectileEntityMixin extends Entity implements OriginOwner {
-    @Shadow @Nullable private UUID ownerUuid;
+    @Shadow @Nullable protected LazyEntityReference<Entity> owner;
 
     public ProjectileEntityMixin(EntityType<?> type, World world) {
         super(type, world);
@@ -36,14 +37,14 @@ public abstract class ProjectileEntityMixin extends Entity implements OriginOwne
         if (getWorld().isClient) {
             return;
         }
-        if (!ClaimUtils.hasMatchingClaims(this.getWorld(), this.getBlockPos(), this.goml$getOriginSafe(), this.ownerUuid)) {
+        if (!ClaimUtils.hasMatchingClaims(this.getWorld(), this.getBlockPos(), this.goml$getOriginSafe(), this.owner != null ? this.owner.getUuid() : null)) {
             ci.cancel();
         }
     }
 
     @Inject(method = "canModifyAt", at = @At("HEAD"), cancellable = true)
     private void preventModification(ServerWorld world, BlockPos pos, CallbackInfoReturnable<Boolean> cir) {
-        if (!ClaimUtils.hasMatchingClaims(this.getWorld(), this.getBlockPos(), this.goml$getOriginSafe(), this.ownerUuid)) {
+        if (!ClaimUtils.hasMatchingClaims(this.getWorld(), this.getBlockPos(), this.goml$getOriginSafe(), this.owner != null ? this.owner.getUuid() : null)) {
             cir.setReturnValue(false);
         }
     }

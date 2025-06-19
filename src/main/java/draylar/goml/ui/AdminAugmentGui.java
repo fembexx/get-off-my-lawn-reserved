@@ -67,11 +67,11 @@ public class AdminAugmentGui extends SimpleGui {
                 .setName(Text.translatable("text.goml.apply"))
                 .setCallback((i, a, c, g) -> {
                     PagedGui.playClickSound(this.player);
-                    GetOffMyLawn.CLAIM.get(claim.getWorldInstance(player.server)).remove(this.claim);
+                    GetOffMyLawn.CLAIM.get(claim.getWorldInstance(player.getServer())).remove(this.claim);
                     var oldSize = claim.getClaimBox();
                     this.claimBox = new ClaimBox(this.claimBox.getOrigin(), this.claimRadius, this.claimHeight, this.claimBox.noShift());
                     claim.internal_setClaimBox(this.claimBox);
-                    GetOffMyLawn.CLAIM.get(claim.getWorldInstance(player.server)).add(this.claim);
+                    GetOffMyLawn.CLAIM.get(claim.getWorldInstance(player.getServer())).add(this.claim);
                     claim.internal_updateChunkCount(player.getServer().getWorld(RegistryKey.of(RegistryKeys.WORLD, this.claim.getWorld())));
                     ClaimEvents.CLAIM_RESIZED.invoker().onResizeEvent(claim, oldSize, this.claimBox);
                 })

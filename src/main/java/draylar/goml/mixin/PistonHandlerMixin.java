@@ -26,6 +26,7 @@ public class PistonHandlerMixin {
     @Shadow @Final private Direction motionDirection;
     @Unique
     private boolean claimsEmpty;
+    @Unique
     private HashSet<UUID> trusted;
 
     @Inject(method = "<init>", at = @At("TAIL"))

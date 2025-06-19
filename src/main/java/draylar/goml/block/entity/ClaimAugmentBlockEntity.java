@@ -14,6 +14,8 @@ import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.storage.ReadView;
+import net.minecraft.storage.WriteView;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
@@ -78,24 +80,22 @@ public class ClaimAugmentBlockEntity extends BlockEntity implements PolymerObjec
     }
 
     @Override
-    protected void writeNbt(NbtCompound tag, RegistryWrapper.WrapperLookup registryLookup) {
+    protected void writeData(WriteView view) {
         if (this.claimPosition != null) {
-            tag.putLong(CLAIM_POSITION_KEY, this.claimPosition.asLong());
+            view.putLong(CLAIM_POSITION_KEY, this.claimPosition.asLong());
         }
         if (this.parentPosition != null) {
-            tag.putLong(PARENT_POSITION_KEY, this.parentPosition.asLong());
+            view.putLong(PARENT_POSITION_KEY, this.parentPosition.asLong());
         }
 
-        super.writeNbt(tag, registryLookup);
+        super.writeData(view);
     }
 
     @Override
-    public void readNbt(NbtCompound tag, RegistryWrapper.WrapperLookup registryLookup) {
-        if (tag.contains(CLAIM_POSITION_KEY)) {
-            this.claimPosition = BlockPos.fromLong(tag.getLong(CLAIM_POSITION_KEY, 0));
-        }
+    public void readData(ReadView view) {
+        this.claimPosition = view.getOptionalLong(CLAIM_POSITION_KEY).map(BlockPos::fromLong).orElse(null);
 
-        this.parentPosition = BlockPos.fromLong(tag.getLong(PARENT_POSITION_KEY, 0));
+        this.parentPosition = BlockPos.fromLong(view.getLong(PARENT_POSITION_KEY, 0));
 
         if (this.augment == null) {
             if (getCachedState().getBlock() instanceof Augment) {
@@ -103,7 +103,7 @@ public class ClaimAugmentBlockEntity extends BlockEntity implements PolymerObjec
             }
         }
 
-        super.readNbt(tag, registryLookup);
+        super.readData(view);
     }
 
     public void remove() {

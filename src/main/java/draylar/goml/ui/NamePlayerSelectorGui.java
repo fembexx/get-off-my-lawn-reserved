@@ -56,8 +56,8 @@ public class NamePlayerSelectorGui extends AnvilInputGui {
 
         if (this.timer-- == 0 && this.currentName != null) {
             this.updateIcon();
-            this.player.server.getUserCache().findByNameAsync(this.currentName).thenAccept((profile) -> {
-                this.player.server.execute(() -> {
+            this.player.getServer().getUserCache().findByNameAsync(this.currentName).thenAccept((profile) -> {
+                this.player.getServer().execute(() -> {
                     if (profile.isPresent()) {
                         this.selectedPlayer = profile.get();
                         if (this.shouldDisplay.test(profile.get())) {

@@ -29,7 +29,7 @@ public class ClaimAugmentGui extends PagedGui {
     public ClaimAugmentGui(ServerPlayerEntity player, Claim claim, boolean canModify, @Nullable Runnable onClose) {
         super(player, onClose);
         this.claim = claim;
-        this.blockEntity = ClaimUtils.getAnchor(player.server.getWorld(RegistryKey.of(RegistryKeys.WORLD, claim.getWorld())), claim);
+        this.blockEntity = ClaimUtils.getAnchor(player.getServer().getWorld(RegistryKey.of(RegistryKeys.WORLD, claim.getWorld())), claim);
         this.canModify = canModify;
         this.setTitle(Text.translatable("text.goml.gui.augment_list.title"));
         this.updateDisplay();

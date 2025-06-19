@@ -2,6 +2,8 @@ package draylar.goml.api;
 
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
+import net.minecraft.storage.ReadView;
+import net.minecraft.storage.WriteView;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 
@@ -61,24 +63,20 @@ public record ClaimBox(com.jamieswhiteshirt.rtree3i.Box rtree3iBox, Box minecraf
         return this.radius;
     }
 
-    public static ClaimBox readNbt(NbtCompound tag, int i) {
-        BlockPos originPos = BlockPos.fromLong(tag.getLong("OriginPos", 0));
-        var radius = tag.getInt("Radius", 0);
-        var height = tag.contains("Height") ? tag.getInt("Height", 0) : radius;
+    public static ClaimBox readData(ReadView view, int i) {
+        BlockPos originPos = BlockPos.fromLong(view.getLong("OriginPos", 0));
+        var radius = view.getInt("Radius", 0);
+        var height = view.getInt("Height", radius);
         if (radius > 0 && height > 0) {
-            return new ClaimBox(originPos, radius, height, tag.getBoolean("NoShift", false));
+            return new ClaimBox(originPos, radius, height, view.getBoolean("NoShift", false));
         }
         return EMPTY;
     }
 
-    public NbtElement toNbt() {
-        NbtCompound boxTag = new NbtCompound();
-
-        boxTag.putLong("OriginPos", this.getOrigin().asLong());
-        boxTag.putInt("Radius", this.getRadius());
-        boxTag.putInt("Height", this.getY());
-        boxTag.putBoolean("NoShift", this.noShift());
-
-        return boxTag;
+    public void writeData(WriteView view) {
+        view.putLong("OriginPos", this.getOrigin().asLong());
+        view.putInt("Radius", this.getRadius());
+        view.putInt("Height", this.getY());
+        view.putBoolean("NoShift", this.noShift());
     }
 }
