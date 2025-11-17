@@ -164,7 +164,9 @@ public final class ClaimMarker {
 		if (!this.owners.isEmpty()) {
 			StringBuilder ownersItems = new StringBuilder();
 			for (PlayerRecord owner : this.owners) {
-				ownersItems.append(LIST_ITEM.formatted(owner.getHeadIcon().getHtml(), owner.getName()));
+				String headIconHtml = owner.getHeadIcon() != null ? owner.getHeadIcon().getHtml() : "";
+				String name = owner.getName() != null ? owner.getName() : "Unknown";
+				ownersItems.append(LIST_ITEM.formatted(headIconHtml, name));
 			}
 			String ownersSection = LIST_SECTION_CONTAINER.formatted(this.labels.get("owners"), ownersItems.toString());
 			content.append(ownersSection);
@@ -174,7 +176,9 @@ public final class ClaimMarker {
 		if (!this.trusted.isEmpty()) {
 			StringBuilder trustedItems = new StringBuilder();
 			for (PlayerRecord trustedPlayer : this.trusted) {
-				trustedItems.append(LIST_ITEM.formatted(trustedPlayer.getHeadIcon().getHtml(), trustedPlayer.getName()));
+				String headIconHtml = trustedPlayer.getHeadIcon() != null ? trustedPlayer.getHeadIcon().getHtml() : "";
+				String name = trustedPlayer.getName() != null ? trustedPlayer.getName() : "Unknown";
+				trustedItems.append(LIST_ITEM.formatted(headIconHtml, name));
 			}
 			String trustedSection = LIST_SECTION_CONTAINER.formatted(this.labels.get("trusted"), trustedItems.toString());
 			content.append(trustedSection);
@@ -184,15 +188,19 @@ public final class ClaimMarker {
 		if (!this.augments.isEmpty()) {
 			StringBuilder augmentsItems = new StringBuilder();
 			for (PlayerRecord augment : this.augments) {
-				augmentsItems.append(LIST_ITEM.formatted(augment.getHeadIcon().getHtml(), augment.getName()));
+				String headIconHtml = augment.getHeadIcon() != null ? augment.getHeadIcon().getHtml() : "";
+				String name = augment.getName() != null ? augment.getName() : "Unknown";
+				augmentsItems.append(LIST_ITEM.formatted(headIconHtml, name));
 			}
 			String augmentsSection = LIST_SECTION_CONTAINER.formatted(this.labels.get("augments"), augmentsItems.toString());
 			content.append(augmentsSection);
 		}
 
+		String anchorIconHtml = this.claimAnchorType.getHeadIcon() != null ? this.claimAnchorType.getHeadIcon().getHtml("24px") : "";
+		String anchorName = this.claimAnchorType.getName() != null ? this.claimAnchorType.getName() : "Unknown";
 		return DETAILS_CONTAINER.formatted(
-			this.claimAnchorType.getHeadIcon().getHtml("24px"),
-			this.claimAnchorType.getName(),
+			anchorIconHtml,
+			anchorName,
 			content.toString()
 		);
 	}
